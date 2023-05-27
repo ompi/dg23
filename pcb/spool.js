@@ -15,6 +15,10 @@ function windTrace(trace, spool, ccw) {
     var large;
     var sweep;
 
+    if (spool.u !== undefined) {
+        spool.r -= trace.traceWidth / 2 + trace.minTraceSpacing;
+    }
+
     if (spool.t) {
         spool.r += trace.traceWidth / 2 + trace.minTraceSpacing;
     }
@@ -50,11 +54,9 @@ function windTrace(trace, spool, ccw) {
         trace.lastSpool.r += trace.traceWidth / 2;
     }
 
-/*    if (trace.lastSpool.u) {
-        trace.lastSpool.r -= trace.traceWidth + trace.minTraceSpacing;
-    } else {
-        trace.lastSpool.r += trace.traceWidth + trace.minTraceSpacing;
-    }*/
+    if (trace.lastSpool.u !== undefined) {
+        trace.lastSpool.r -= trace.traceWidth / 2;
+    }
 
     trace.lastCcw = ccw;
     trace.lastTouchy = end;

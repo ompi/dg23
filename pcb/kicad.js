@@ -211,6 +211,23 @@ function mountHole(refDes, p, n) {
   this.kicadData = h.kicadData;
 }
 
+function matrixHole(refDes, p, n) {
+  var holeRadius = 2.1 / 2;
+  var copperRadius = 4 / 2;
+
+  var net = "";
+  if (typeof n != 'undefined') {
+    net = `(net ${nets[n].id} "${nets[n].name}")`;
+  }
+
+  addSpool(`${refDes}.C`, { p: { x: p[0], y: p[1] }, r: 0.005 });
+  addSpool(`${refDes}.T`, { p: { x: p[0], y: p[1] }, r: copperRadius, t: true });
+
+  var h = new hole(p, holeRadius, copperRadius, net);
+  this.models = [ h ];
+  this.kicadData = h.kicadData;
+}
+
 function hoopHole(refDes, p, n) {
   var holeRadius = 2 / 2;
 
@@ -486,6 +503,39 @@ function packageDip16(refDes, x, y, a, m, netAssignment) {
   return new dip(refDes, pads, x, y, a, m, netAssignment);
 }
 
+function connector22(refDes, x, y, a, m, netAssignment) {
+  var pads = [];
+
+  const hs = 2.54;
+  const pd = 1.7;
+  const hd = 1.0;
+
+  for (var i = 0; i < 22; i++) {
+    pads.push({ x: hs * i, y: 0, pd: pd, hd: hd });
+  }
+
+  return new dip(refDes, pads, x, y, a, m, netAssignment);
+}
+
+function potRk09(refDes, x, y, a, m, netAssignment) {
+  var pads = [];
+
+  const pd = 1.6;
+  const hd = 1;
+  const e = 0.8;
+  const hw = 1.8;
+  const hh = 3.8;
+
+  pads.push({ x: -2.5, y: -7, pd: pd, hd: hd });
+  pads.push({ x: 0, y: -7, pd: pd, hd: hd });
+  pads.push({ x: 2.5, y: -7, pd: pd, hd: hd });
+
+  pads.push({ x: -10.6 / 2, y: 0, pw: hw + e, ph: hh + e, hw: hw, hh: hh });
+  pads.push({ x: 10.6 / 2, y: 0, pw: hw + e, ph: hh + e, hw: hw, hh: hh });
+
+  return new dip(refDes, pads, x, y, a, m, netAssignment);
+}
+
 function package(refDes, pads, x, y, a, flipped, netAssignment) {
   var kicadData = "";
 
@@ -667,15 +717,57 @@ function dip(refDes, pads, x, y, a, flipped, netAssignment) {
     o = geom.polar2cartesian(po.r, po.a);
 
     c = { x: x + o.x, y: y + o.y };
-
     addSpool(`${refDes}.P${i + 1}.C`, { p: c, r: 0.005 });
-    addSpool(`${refDes}.P${i + 1}.T`, { p: c, r: p.pd / 2, t: true });
+
+    if (p.pw != undefined) {
+      d = Math.min(p.pw, p.ph);
+      w = p.pw - d;
+      h = p.ph - d;
+
+      // Clearance
+      pb = geom.cartesian2polar(w / 2 * m, -h / 2);
+      pb.a += a * Math.PI / 180;
+      b = geom.polar2cartesian(pb.r, pb.a);
+
+      cse = { x: c.x + b.x, y: c.y + b.y };
+
+      pb = geom.cartesian2polar(w / 2 * m, h / 2);
+      pb.a += a * Math.PI / 180;
+      b = geom.polar2cartesian(pb.r, pb.a);
+
+      cne = { x: c.x + b.x, y: c.y + b.y };
+
+      pb = geom.cartesian2polar(w / 2 * m, h / 2);
+      pb.a += a * Math.PI / 180;
+      b = geom.polar2cartesian(pb.r, pb.a);
+
+      cnw = { x: c.x + b.x, y: c.y + b.y };
+
+      pb = geom.cartesian2polar(w / 2 * m, -h / 2);
+      pb.a += a * Math.PI / 180;
+      b = geom.polar2cartesian(pb.r, pb.a);
+
+      csw = { x: c.x + b.x, y: c.y + b.y };
+
+      r = Math.min(p.pw, p.ph) / 2;
+
+      addSpool(`${refDes}.P${i + 1}.C.NW`, { p: cnw, r: r, t: true });
+      addSpool(`${refDes}.P${i + 1}.C.NE`, { p: cne, r: r, t: true });
+      addSpool(`${refDes}.P${i + 1}.C.SW`, { p: csw, r: r, t: true });
+      addSpool(`${refDes}.P${i + 1}.C.SE`, { p: cse, r: r, t: true });
+    } else {
+      addSpool(`${refDes}.P${i + 1}.T`, { p: c, r: p.pd / 2, t: true });
+    }
   });
 
   function mod() {
     this.models = [];
     pads.forEach((p) => {
-      this.models.push(makerjs.model.move(new makerjs.models.Oval(p.pd, p.pd), [p.x - p.pd / 2, p.y - p.pd / 2]));
+      if (p.pd !== undefined) {
+        this.models.push(makerjs.model.move(new makerjs.models.Oval(p.pd, p.pd), [p.x - p.pd / 2, p.y - p.pd / 2]));
+      } else {
+        this.models.push(makerjs.model.move(new makerjs.models.Oval(p.pw, p.ph), [p.x - p.pw / 2, p.y - p.ph / 2]));
+      }
     });
   }
 
@@ -705,7 +797,11 @@ function dip(refDes, pads, x, y, a, flipped, netAssignment) {
       net = `(net ${nets[n].id} "${nets[n].name}")`;
     }
 
-    kicadData += `  (pad ${i+1} thru_hole oval (at ${p.x * m} ${-p.y} ${a}) (size ${p.pd} ${p.pd}) (drill ${p.hd}) (layers *.Cu *.Mask)\n`;
+    if (p.pd !== undefined) {
+      kicadData += `  (pad ${i+1} thru_hole oval (at ${p.x * m} ${-p.y} ${a}) (size ${p.pd} ${p.pd}) (drill ${p.hd}) (layers *.Cu *.Mask)\n`;
+    } else {
+      kicadData += `  (pad ${i+1} thru_hole oval (at ${p.x * m} ${-p.y} ${a}) (size ${p.pw} ${p.ph}) (drill ${p.hw} ${p.hh}) (layers *.Cu *.Mask)\n`;
+    }
     kicadData += `    ${net})\n`;
   });
 
@@ -724,6 +820,7 @@ kicad = {
     via: via,
     terminal: terminal,
     mountHole: mountHole,
+    matrixHole: matrixHole,
     addNet: addNet,
     dumpNets: dumpNets,
     dumpHeader: dumpHeader,
@@ -742,6 +839,8 @@ kicad = {
     packageThd2P: packageThd2P,
     packageDip14: packageDip14,
     packageDip16: packageDip16,
+    connector22: connector22,
+    potRk09: potRk09,
     addSpool: addSpool,
     getSpool: getSpool,
 }
