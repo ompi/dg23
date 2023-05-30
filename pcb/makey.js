@@ -34,6 +34,17 @@ function board() {
     });
   }
 
+  function power(traces, layer) {
+    traces.forEach((trace) => {
+      var t = { traceWidth: vccWidth, minTraceSpacing: rules.minTraceSpacing };
+      trace.forEach((s) => {
+        spool.windTrace(t, kicad.getSpool(s[0]), s[1]);
+      });
+      paths = paths.concat(t.paths);
+      kicadData += kicad.trace2kicadTrace(t, layer);
+    });
+  }
+
   function logo() {
     var logoData = [ [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, ],
                      [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, ],
@@ -64,10 +75,18 @@ function board() {
     const ns = [
       "VCC", "GND",
 
-      "#RESET", "RESET", "#EN", "CLK", "STOP", "BUTTON",
+      "#RESET", "RESET", "#EN", "CLK", "CLK_DIV16", "STOP", "BUTTON",
       "TRIGGER_STOP", "TRIGGER_LOOP",
       "LOOPQ", "STOPQ",
       "SRQ", "#SRQ",
+
+      "CLKX", "CLKY", "CLKR",
+
+      "OSC0", "#OSC0_EN", "OSC0X", "OSC0Y", "OSC0R",
+      "OSC1", "#OSC1_EN", "OSC1X", "OSC1Y", "OSC1R",
+      "OSC2", "#OSC2_EN", "OSC2X", "OSC2Y", "OSC2R",
+      "OSC3", "#OSC3_EN", "OSC3X", "OSC3Y", "OSC3R",
+      "OSC4", "#OSC4_EN", "OSC4X", "OSC4Y", "OSC4R",
 
       "CNT0", "CNT1", "CNT2", "CNT3",
 
@@ -75,6 +94,10 @@ function board() {
       "COL8", "COL9", "COL10", "COL11", "COL12", "COL13", "COL14", "COL15",
 
       "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5",
+
+      "RAMPOSC",
+      "RAMP0", "RAMP1", "RAMP2", "RAMP3",
+      "OUT",
 
       "VCOMP",
 
@@ -91,7 +114,7 @@ function board() {
       "4Y", "4A", "5Y", "5A", "6Y", "6A",
 
       "1OUT", "2OUT", "VCC", "2IN-", "2IN+", "1IN-", "1IN+",
-      "3IN-", "3IN+", "4IN-", "4IN+", "GND", "OUT4", "OUT3",
+      "3IN-", "3IN+", "4IN-", "4IN+", "GND", "4OUT", "3OUT",
 
     ];
 
@@ -120,7 +143,7 @@ function board() {
                        "4Y", "4A", "5Y", "5A", "6Y", "6A", "VCC" ] // NOT
 
     const lm339n = [ "1OUT", "2OUT", "VCC", "2IN-", "2IN+", "1IN-", "1IN+",
-                     "3IN-", "3IN+", "4IN-", "4IN+", "GND", "OUT4", "OUT3" ] // opamp
+                     "3IN-", "3IN+", "4IN-", "4IN+", "GND", "4OUT", "3OUT" ] // opamp
 
     const dip14 = [ "1", "2", "3", "4", "5", "6", "7",
                     "8", "9", "10", "11", "12", "13", "14" ]
@@ -150,8 +173,10 @@ function board() {
     models.push(cap);
     kicadData += cap.kicadData;
 
-    const u3 = [ "CLK", "RESET", "CNT0", "CNT1", "CNT2", "CNT3", "GND",
-                  "2QD(MSB)", "2QC", "2QB", "2QA(LSB)", "GND", "2CLK", "VCC" ] // counter
+//               "1CLK", "1CLR", "1QA(LSB)", "1QB", "1QC", "1QD(MSB)", "GND",
+    const u3 = [ "CLK_DIV16", "RESET", "CNT0", "CNT1", "CNT2", "CNT3", "GND",
+                  "CLK_DIV16", "RAMP2", "RAMP1", "RAMP0", "RESET", "CLK", "VCC" ] // counter
+//                 "2QD(MSB)", "2QC", "2QB", "2QA(LSB)", "2CLR", "2CLK", "VCC"
     var chip = new kicad.packageDip14("U3", -0.5 * 2.54, 4 * 2.54, 90, false, u3);
     models.push(chip);
     kicadData += chip.kicadData;
@@ -186,16 +211,18 @@ function board() {
     models.push(cap);
     kicadData += cap.kicadData;
 
-    var res = new kicad.packageThd2P("R1", 11.5 * 2.54, 9 * 2.54, 270, false, ["VCC", "TRIGGER_STOP"]);
+    var res = new kicad.packageThd2P("R1", 11.5 * 2.54, 11 * 2.54, 270, false, ["VCC", "TRIGGER_STOP"]);
     models.push(res);
     kicadData += res.kicadData;
 
-    var res = new kicad.packageThd2P("R2", 11.5 * 2.54, 7 * 2.54, 90, false, ["VCC", "TRIGGER_LOOP"]);
+    var res = new kicad.packageThd2P("R2", 12.5 * 2.54, 11 * 2.54, 270, false, ["VCC", "TRIGGER_LOOP"]);
     models.push(res);
     kicadData += res.kicadData;
 
-    const u6 = [ "1A", "1Y", "2A", "2Y", "3A", "3Y", "GND",
-                 "4Y", "4A", "5Y", "5A", "#RESET", "RESET", "VCC" ] // NOT
+//               "1A",   "1Y", "2A", "2Y", "3A", "3Y", "GND",
+    const u6 = [ "CLKX", "CLK", "2A", "2Y", "3A", "3Y", "GND",
+                 "4Y", "4A", "OSC0", "OSC0X", "#RESET", "RESET", "VCC" ] // NOT
+//               "4Y", "4A", "5Y",   "5A", "6Y",     "6A",    "VCC"
     var chip = new kicad.packageDip14("U6", 7.5 * 2.54, 4 * 2.54, 90, false, u6);
     models.push(chip);
     kicadData += chip.kicadData;
@@ -204,40 +231,76 @@ function board() {
     models.push(cap);
     kicadData += cap.kicadData;
 
-    const u7 = [ "1OUT", "2OUT", "VCC", "2IN-", "2IN+", "1IN-", "1IN+",
-                 "3IN-", "3IN+", "4IN-", "4IN+", "GND", "OUT4", "OUT3" ] // opamp
+//               "1OUT", "2OUT",     "VCC", "2IN-",  "2IN+",  "1IN-", "1IN+"
+    const u7 = [ "1OUT", "#OSC0_EN", "VCC", "VCOMP", "ROW0", "ROW2", "VCOMP",
+                 "ROW3", "VCOMP", "ROW1", "VCOMP", "GND", "4OUT", "3OUT" ] // opamp
+//               "3IN-", "3IN+",  "4IN-", "4IN+",  "GND", "4OUT", "3OUT"
     var chip = new kicad.packageDip14("U7", 15.5 * 2.54, 4 * 2.54, 90, false, u7);
     models.push(chip);
     kicadData += chip.kicadData;
 
-    var cap = new kicad.packageThd2P("C7", 11.5 * 2.54, 4 * 2.54, 90, false, ["VCC", "GND"]);
+    var cap = new kicad.packageThd2P("C7", 14 * 2.54, 1.5 * 2.54, 0, false, ["VCC", "GND"]);
     models.push(cap);
     kicadData += cap.kicadData;
 
+//               "1OUT", "2OUT", "VCC", "2IN-", "2IN+", "1IN-", "1IN+"
     const u8 = [ "1OUT", "2OUT", "VCC", "2IN-", "2IN+", "1IN-", "1IN+",
-                 "3IN-", "3IN+", "4IN-", "4IN+", "GND", "OUT4", "OUT3" ] // opamp
-    var chip = new kicad.packageDip14("U8", 23.5 * 2.54, 0 * 2.54, 90, false, u8);
+                 "3IN-", "3IN+", "4IN-", "4IN+", "GND", "4OUT", "3OUT" ] // opamp
+//               "3IN-", "3IN+", "4IN-", "4IN+", "GND", "4OUT", "3OUT"
+    var chip = new kicad.packageDip14("U8", 22.5 * 2.54, 4 * 2.54, 90, false, u8);
     models.push(chip);
     kicadData += chip.kicadData;
 
-    var cap = new kicad.packageThd2P("C8", 19.5 * 2.54, 1 * 2.54, 90, false, ["VCC", "GND"]);
+    var cap = new kicad.packageThd2P("C8", 21 * 2.54, 1.5 * 2.54, 180, false, ["VCC", "GND"]);
     models.push(cap);
     kicadData += cap.kicadData;
 
-    var res = new kicad.packageThd2P("R10", 14 * 2.54, 0.5 * 2.54, 0, false, ["VCC", "VCOMP"]);
+    // VCOMP
+    var res = new kicad.packageThd2P("R21", 14 * 2.54, 0.5 * 2.54, 0, false, ["VCC", "VCOMP"]);
+    models.push(res);
+    kicadData += res.kicadData;
+    var res = new kicad.packageThd2P("R22", 16 * 2.54, 0.5 * 2.54, 180, false, ["GND", "VCOMP"]);
     models.push(res);
     kicadData += res.kicadData;
 
-    var res = new kicad.packageThd2P("R11", 14 * 2.54, 1.5 * 2.54, 0, false, ["GND", "VCOMP"]);
+    // LFO
+    var res = new kicad.packageThd2P("R23", 15 * 2.54, 7.5 * 2.54, 0, false, ["CLKX", "CLKR"]);
+    models.push(res);
+    kicadData += res.kicadData;
+    var cap = new kicad.packageThd2P("C11", 15 * 2.54, 6.5 * 2.54, 0, false, ["CLK", "CLKY"]);
+    models.push(cap);
+    kicadData += cap.kicadData;
+    var res = new kicad.potRk09('R24', 30 * 2.54, 9 * 2.54, -90, false, [ "CLKR", "CLKR", "CLKY", "GND", "GND" ]);
     models.push(res);
     kicadData += res.kicadData;
 
+    // OSC0
+    var res = new kicad.packageThd2P("R25", 13 * 2.54, 8.5 * 2.54, 0, false, ["OSC0X", "OSC0R"]);
+    models.push(res);
+    kicadData += res.kicadData;
+    var cap = new kicad.packageThd2P("C10", 13 * 2.54, 7.5 * 2.54, 0, false, ["OSC0", "OSC0Y"]);
+    models.push(cap);
+    kicadData += cap.kicadData;
+
+//               "1Y",   "1A",  "1B",   "2Y", "2A", "2B", "GND",
+    const u9 = [ "CLKX", "#EN", "CLKY", "2Y", "2A", "2B", "GND",
+                 "3A", "3B", "3Y", "OSC0Y", "#OSC0_EN", "OSC0X", "VCC" ] // NOR
+//               "3A", "3B", "3Y", "4A",    "4B",       "4Y", "VCC"
+    var chip = new kicad.packageDip14("U9", 19.5 * 2.54, 8 * 2.54, 90, false, u9);
+    models.push(chip);
+    kicadData += chip.kicadData;
+
+    var cap = new kicad.packageThd2P("C9", 15.5 * 2.54, 9 * 2.54, -90, false, ["VCC", "GND"]);
+    models.push(cap);
+    kicadData += cap.kicadData;
+
+    // OSCx POTS
     for (var i = 0; i < 5; i++) {
       const px = 120;
       const py = -42;
       const vo = 15;
 
-      var res = new kicad.potRk09(`R${i + 5}`, px, py + i * vo, 270, false, [ "GND", "GND", "GND", "GND", "GND" ]);
+      var res = new kicad.potRk09(`R${i + 5}`, px, py + i * vo, 270, false, [ `OSC${4-i}R`, `OSC${4-i}R`, `OSC${4-i}Y`, "GND", "GND" ]);
       models.push(res);
       kicadData += res.kicadData;
     }
@@ -266,6 +329,16 @@ function board() {
     var v = new kicad.via("VEN", [-0.5 * 2.54, 0 * 2.54], "#EN");
     paths = paths.concat(v.paths);
     kicadData += v.kicadData;
+
+    // RESET
+    var v = new kicad.via("VRESET", [3.5 * 2.54, 2.5 * 2.54], "RESET");
+    models.push(v);
+    kicadData += v.kicadData;
+
+    // CLK
+    var v = new kicad.via("VCLK", [-3 * 2.54, 3 * 2.54], "CLK");
+    models.push(v);
+    kicadData += v.kicadData;
   }
 
   function top() {
@@ -282,7 +355,6 @@ function board() {
     paths = paths.concat(t.paths);
     kicadData += kicad.trace2kicadTrace(t, "F.Cu");
 
-    b = [];
     bus([
       [ ['VCNT0.C', 0], ['VCNT1.T', 0], ['U1.P8.T', 1], ['U2.P1.C', 0] ],
       [ ['VCNT1.C', 0], ['VCNT2.T', 0], ['U2.P1.T', 1], ['U2.P2.C', 0] ],
@@ -293,10 +365,12 @@ function board() {
 
     // LOOPQ
     t = { traceWidth: rules.minTraceWidth, minTraceSpacing: rules.minTraceSpacing };
-    spool.windTrace(t, kicad.getSpool('U4.P5.C'), 0);
-    spool.windTrace(t, kicad.getSpool('U4.P6.T'), 0);
-    spool.windTrace(t, kicad.getSpool('U5.P4.T'), 0);
     spool.windTrace(t, kicad.getSpool('U5.P5.C'), 0);
+    spool.windTrace(t, kicad.getSpool('U5.P4.T'), 1);
+    spool.windTrace(t, kicad.getSpool('U5.P1.T'), 1);
+    spool.windTrace(t, kicad.getSpool('U4.P7.T'), 0);
+    spool.windTrace(t, kicad.getSpool('U4.P6.T'), 0);
+    spool.windTrace(t, kicad.getSpool('U4.P5.C'), 0);
     paths = paths.concat(t.paths);
     kicadData += kicad.trace2kicadTrace(t, "F.Cu");
 
@@ -309,7 +383,7 @@ function board() {
     paths = paths.concat(t.paths);
     kicadData += kicad.trace2kicadTrace(t, "F.Cu");
 
-    // TRIGGER_LOOP
+/*    // TRIGGER_LOOP
     kicad.getSpool('U5.P4.T').r = 1.6 / 2;
     t = { traceWidth: rules.minTraceWidth, minTraceSpacing: rules.minTraceSpacing };
     spool.windTrace(t, kicad.getSpool('U5.P3.C'), 0);
@@ -326,25 +400,20 @@ function board() {
     spool.windTrace(t, kicad.getSpool('R1.P2.C'), 0);
     paths = paths.concat(t.paths);
     kicadData += kicad.trace2kicadTrace(t, "F.Cu");
-
-    // #RESET
+*/
+    // RESET
     t = { traceWidth: rules.minTraceWidth, minTraceSpacing: rules.minTraceSpacing };
+    kicad.getSpool('U4.P7.T').r = 1.6 / 2;
     spool.windTrace(t, kicad.getSpool('U6.P13.C'), 0);
     spool.windTrace(t, kicad.getSpool('U6.P14.T'), 0);
-    spool.windTrace(t, kicad.getSpool('U4.P6.T'), 1);
-    spool.windTrace(t, kicad.getSpool('U4.P5.T'), 1);
+    spool.windTrace(t, kicad.getSpool('U4.P7.T'), 1);
     spool.windTrace(t, kicad.getSpool('U4.P6.C'), 0);
     paths = paths.concat(t.paths);
     kicadData += kicad.trace2kicadTrace(t, "F.Cu");
 
-    // RESET
-    t = { traceWidth: rules.minTraceWidth, minTraceSpacing: rules.minTraceSpacing };
-    spool.windTrace(t, kicad.getSpool('U3.P2.C'), 0);
-    spool.windTrace(t, kicad.getSpool('U3.P3.T'), 1);
-    spool.windTrace(t, kicad.getSpool('C6.P2.T'), 0);
-    spool.windTrace(t, kicad.getSpool('U6.P13.C'), 0);
-    paths = paths.concat(t.paths);
-    kicadData += kicad.trace2kicadTrace(t, "F.Cu");
+    bus([
+      [ ['U3.P2.C', 0], ['U3.P3.T', 1], ['U3.P7.T', 1], ['VRESET.C', 0] ]
+    ], "F.Cu");
 
     // BUTTON
     t = { traceWidth: rules.minTraceWidth, minTraceSpacing: rules.minTraceSpacing };
@@ -354,6 +423,43 @@ function board() {
     paths = paths.concat(t.paths);
     kicadData += kicad.trace2kicadTrace(t, "F.Cu");
 
+    // CLK_DIV16
+    bus([ 
+      [ ['U3.P8.C', 0], ['U3.P9.T', 0], ['C3.P1.T', 0], ['C3.P2.T', 0], ['U3.P1.C', 0] ],
+    ], "F.Cu");
+
+    // CLK
+    bus([ 
+      [ ['VCLK.C', 0], ['U3.P2.T', 0], ['U6.P1.T', 0], ['U6.P2.C', 0] ], 
+    ], "F.Cu");
+
+    // LFO
+    bus([ 
+      [ ['U6.P1.C', 0], ['U6.P8.T', 0], ['R23.P1.C', 0] ], 
+      [ ['U6.P2.C', 0], ['U7.P14.T', 1], ['C11.P1.C', 0] ], 
+      [ ['R23.P2.C', 0], ['R24.P2.C', 0] ], 
+      [ ['R24.P1.C', 0], ['R24.P2.C', 0] ], 
+      [ ['C11.P2.C', 0], ['U9.P1.T', 1], ['U9.P2.T', 1], ['U9.P3.C', 0] ],
+      [ ['U9.P3.C', 0], ['U9.P4.T', 1], ['R24.P3.C', 0] ],
+      [ ['R23.P1.C', 0], ['C11.P2.T', 0], ['U9.P1.C', 0] ], 
+    ], "F.Cu");
+
+    // OSC0
+    bus([ 
+      [ ['U6.P11.C', 0], ['U6.P10.T', 1], ['U5.P7.T', 0], ['R25.P1.C', 0] ], 
+      [ ['U6.P10.C', 0], ['U6.P9.T', 1], ['U5.P7.T', 0], ['C10.P1.C', 0] ], 
+
+      [ ['R25.P1.C', 0], ['R25.P2.T', 1], ['U9.P14.T', 0], ['U9.P13.C', 0] ],
+      [ ['C10.P2.C', 0], ['U9.P11.C', 0] ],
+    ], "F.Cu");
+
+    // VCOMP
+    bus([ 
+      [ ['R21.P2.C', 0], ['R22.P2.C', 0] ],
+      [ ['R22.P2.C', 0], ['U7.P4.C', 0] ],
+      [ ['R22.P2.C', 0], ['U7.P7.C', 0] ]
+    ], "F.Cu");
+
     // VCC
     t = { traceWidth: rules.minTraceWidth, minTraceSpacing: rules.minTraceSpacing };
     spool.windTrace(t, kicad.getSpool('U5.P13.C'), 0);
@@ -361,7 +467,12 @@ function board() {
     paths = paths.concat(t.paths);
     kicadData += kicad.trace2kicadTrace(t, "F.Cu");
 
-    t = { traceWidth: vccWidth, minTraceSpacing: rules.minTraceSpacing };
+    power([
+      [ ['C4.P1.C', 0], ['U4.P14.C', 0], ['U4.P13.T', 0], ['U4.P8.T', 0], ['C5.P1.C', 0], ['U5.P14.C', 0], ],
+      [ ['U5.P14.C', 0], ['U5.P13.C', 0], ['U5.P12.T', 0], ['U5.P8.T', 0], ['C9.P1.C', 0], ['U9.P14.C', 0]  ],
+    ], "F.Cu");
+
+/*    t = { traceWidth: vccWidth, minTraceSpacing: rules.minTraceSpacing };
     spool.windTrace(t, kicad.getSpool('U5.P14.C'), 0);
     spool.windTrace(t, kicad.getSpool('C5.P1.C'), 0);
     spool.windTrace(t, kicad.getSpool('U4.P8.T'), 1);
@@ -370,7 +481,7 @@ function board() {
     spool.windTrace(t, kicad.getSpool('C4.P1.C'), 0);
     paths = paths.concat(t.paths);
     kicadData += kicad.trace2kicadTrace(t, "F.Cu");
-
+*/
     t = { traceWidth: vccWidth, minTraceSpacing: rules.minTraceSpacing };
     spool.windTrace(t, kicad.getSpool('U6.P14.C'), 0);
     spool.windTrace(t, kicad.getSpool('C6.P1.C'), 0);
@@ -404,7 +515,7 @@ function board() {
     t = { traceWidth: vccWidth, minTraceSpacing: rules.minTraceSpacing };
     spool.windTrace(t, kicad.getSpool('U2.P16.C'), 0);
     spool.windTrace(t, kicad.getSpool('U2.P15.T'), 0);
-    spool.windTrace(t, kicad.getSpool(`R10.P1.C`), 0);
+    spool.windTrace(t, kicad.getSpool(`R21.P1.C`), 0);
     paths = paths.concat(t.paths);
     kicadData += kicad.trace2kicadTrace(t, "F.Cu");
 
@@ -416,6 +527,12 @@ function board() {
       paths = paths.concat(t.paths);
       kicadData += kicad.trace2kicadTrace(t, "F.Cu");
     }
+
+    power([
+      [ ['R10.P1.C', 0], ['R21.P1.C', 0] ],
+      [ ['R21.P1.C', 0], ['C7.P1.C', 0] ],
+      [ ['C7.P1.C', 0], ['U7.P3.C', 0] ]
+    ], "F.Cu");
   }
 
   function bottom() {
@@ -465,6 +582,13 @@ function board() {
       kicadData += kicad.trace2kicadTrace(t, "B.Cu");
     }
 
+    bus([
+      [ ['R10.P2.C', 0 ], ['R10.P1.T', 0 ], ['R21.P2.T', 1], ['C7.P2.T', 0], ['U7.P5.C', 0] ],
+      [ ['R11.P2.C', 0 ], ['R11.P1.T', 0 ], ['R22.P2.T', 1], ['U7.P5.T', 0], ['U7.P10.C', 0] ],
+      [ ['R12.P2.C', 0 ], ['R12.P1.T', 0 ], ['R22.P1.T', 1], ['U7.P6.C', 0] ],
+      [ ['R13.P2.C', 0 ], ['R13.P1.T', 0 ], ['U7.P6.T', 0], ['U7.P8.C', 0] ],
+    ], "B.Cu")
+
     // CNTS
     for (var i = 0; i < 3; i++) {
       t = { traceWidth: rules.minTraceWidth, minTraceSpacing: rules.minTraceSpacing };
@@ -511,13 +635,25 @@ function board() {
     kicad.getSpool("U4.P6.T").r = 1.6 / 2;
     t = { traceWidth: rules.minTraceWidth, minTraceSpacing: rules.minTraceSpacing };
     spool.windTrace(t, kicad.getSpool("U4.P8.C"), 0);
-    spool.windTrace(t, kicad.getSpool("U4.P6.T"), 0);
+    spool.windTrace(t, kicad.getSpool("U4.P5.T"), 0);
+    spool.windTrace(t, kicad.getSpool("U3.P10.T"), 0);
     spool.windTrace(t, kicad.getSpool("U3.P5.T"), 1);
     spool.windTrace(t, kicad.getSpool("U1.P12.T"), 0);
     spool.windTrace(t, kicad.getSpool("VEN.C"), 0);
     spool.windTrace(t, kicad.getSpool("U1.P4.C"), 0);
     paths = paths.concat(t.paths);
     kicadData += kicad.trace2kicadTrace(t, "B.Cu");
+
+    bus([
+      [ ['U2.P4.C', 0], ['U2.P12.T', 1], ['U7.P2.T', 0], ['U7.P10.T', 1], ['U9.P2.C', 0] ],
+    ], "B.Cu");
+
+    // #OSC0_EN
+    kicad.getSpool('C11.P2.T').r = 1.6/2;
+    kicad.getSpool('U9.P1.T').r = 1.6/2;
+    bus([
+      [ ['U7.P2.C', 0], ['U7.P11.T', 1], ['C11.P2.T', 0], ['U9.P1.T', 1], ['U9.P12.C', 0] ],
+    ], "B.Cu");
 
     // #RESET
     t = { traceWidth: rules.minTraceWidth, minTraceSpacing: rules.minTraceSpacing };
@@ -541,6 +677,15 @@ function board() {
     spool.windTrace(t, kicad.getSpool('U6.P12.C'), 0);
     paths = paths.concat(t.paths);
     kicadData += kicad.trace2kicadTrace(t, "B.Cu");
+
+    // RESET
+    bus([ 
+      [ ['U3.P2.C', 0], ['U3.P12.C', 0] ],
+      [ ['VRESET.C', 0], ['U6.P13.C', 0] ]
+    ], "B.Cu");
+
+    // CLK
+    bus([ [ ['U3.P13.C', 0], ['VCLK.C', 0] ] ], "B.Cu");
 
     // VCC
     t = { traceWidth: vccWidth, minTraceSpacing: rules.minTraceSpacing };
@@ -757,7 +902,7 @@ function board() {
 
   function gndPlane() {
     this.models = [];
-    this.models.push(makerjs.model.move(new makerjs.models.Rectangle(20 * 2.54, 16 * 2.54), [-6 * 2.54, -5 * 2.54]));
+    this.models.push(makerjs.model.move(new makerjs.models.Rectangle(30 * 2.54, 16 * 2.54), [-6 * 2.54, -5 * 2.54]));
   }
 
   var gp = new gndPlane();
