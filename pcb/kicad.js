@@ -503,6 +503,20 @@ function packageDip16(refDes, x, y, a, m, netAssignment) {
   return new dip(refDes, pads, x, y, a, m, netAssignment);
 }
 
+function packageSip10(refDes, x, y, a, m, netAssignment) {
+  var pads = [];
+
+  const hs = 2.54;
+  const pd = 1.6;
+  const hd = 0.8;
+
+  for (var i = 0; i < 10; i++) {
+    pads.push({ x: hs * i, y: 0, pd: pd, hd: hd });
+  }
+
+  return new dip(refDes, pads, x, y, a, m, netAssignment);
+}
+
 function connector22(refDes, x, y, a, m, netAssignment) {
   var pads = [];
 
@@ -839,6 +853,7 @@ kicad = {
     packageThd2P: packageThd2P,
     packageDip14: packageDip14,
     packageDip16: packageDip16,
+    packageSip10: packageSip10,
     connector22: connector22,
     potRk09: potRk09,
     addSpool: addSpool,
