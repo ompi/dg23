@@ -72,32 +72,98 @@ function polygonify(model) {
   return polys;
 }
 
+function polygonify2(model) {
+  var polys = [];
+
+  function push(positive, chain) {
+    var pts = makerjs.chain.toKeyPoints(chain, .05);
+
+    var fixed = [];
+
+    pts.forEach(p => {
+      fixed.push([fix(p[0]), -fix(p[1])]);
+    });
+
+    polys.push({ positive: positive, points: fixed });
+  }
+
+  function explore(chains) {
+    nextChains = [];
+
+    chains.forEach(pos => {
+      push(true, pos);
+
+      if (pos.contains !== undefined)
+        pos.contains.forEach(neg => {
+          push(false, neg);
+
+          if (neg.contains !== undefined)
+            nextChains = nextChains.concat(neg.contains);
+        });
+    });
+
+    if (nextChains.length)
+      explore(nextChains);
+  }
+
+  makerjs.model.findChains(model, (chains, loose, layer) => {
+    explore(chains);
+
+    loose.forEach(l => {
+      var pts = makerjs.path.toKeyPoints(l.pathContext, .1);
+
+      var fixed = [];
+
+      pts.forEach(p => {
+        fixed.push([fix(p[0]), -fix(p[1])]);
+      });
+
+      polys.push(fixed);
+    });
+  }, { contain: true });
+
+  return polys;
+}
+
 function model2kicadPolygon(model, layer, mt) {
   var kicadData = "";
   
-  polygonify(model).forEach(pts => {
+  var poly = polygonify2(model);
+
+  while(poly.length) {
+    var p = poly.shift();
+
+    if (p.positive) {
+//console.log('h');
+      kicadData += `(zone (net 0) (net_name "") (layer ${layer}) (tstamp 5A463F51) (hatch edge 0.508)\n`;
+      kicadData += `  (connect_pads (clearance ${rules.minTraceSpacing}))\n`;
+      kicadData += `  (min_thickness ${mt})\n`;
+      kicadData += `  (fill yes (arc_segments 16) (thermal_gap ${rules.minTraceSpacing}) (thermal_bridge_width ${rules.minTraceSpacing}))\n`;
+    }
+//console.log(p)
+
     var points = "";
 
-    pts.forEach((p) => {
+    p.points.forEach((p) => {
       points += `      (xy ${p[0]} ${p[1]})\n`;
     });
 
-    kicadData += `(zone (net 0) (net_name "") (layer ${layer}) (tstamp 5A463F51) (hatch edge 0.508)\n`;
-    kicadData += `  (connect_pads (clearance ${rules.minTraceSpacing}))\n`;
-    kicadData += `  (min_thickness ${mt})\n`;
-    kicadData += `  (fill yes (arc_segments 16) (thermal_gap ${rules.minTraceSpacing}) (thermal_bridge_width ${rules.minTraceSpacing}))\n`;
     kicadData += `  (polygon\n`;
     kicadData += `    (pts\n`;
     kicadData += points;
     kicadData += `    )\n`;
     kicadData += `  )\n`;
-    kicadData += `  (filled_polygon\n`;
-    kicadData += `    (pts\n`;
-    kicadData += points;
-    kicadData += `    )\n`;
-    kicadData += `  )\n`;
-    kicadData += `)\n`;
-  });
+
+    if (!poly.length) {
+//console.log('f');
+      kicadData += `)\n`;
+    } else if (poly[0].positive) {
+//console.log('f');
+      kicadData += `)\n`;
+    }
+
+    positive = p.positive;
+  }
 
   return kicadData;
 }

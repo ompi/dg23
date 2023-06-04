@@ -1,7 +1,7 @@
 .PHONY: clean nuke peek
 
 node_modules:
-	npm install makerjs --save
+	npm install --save
 
 wut.kicad_pcb: makey.js kicad.js head.kicad_pcb node_modules
 	node makey.js > wut.kicad_pcb
