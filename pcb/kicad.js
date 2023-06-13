@@ -294,6 +294,23 @@ function matrixHole(refDes, p, n) {
   this.kicadData = h.kicadData;
 }
 
+function pinHole(refDes, p, n) {
+  var holeRadius = 0.8 / 2;
+  var copperRadius = 1.6 / 2;
+
+  var net = "";
+  if (typeof n != 'undefined') {
+    net = `(net ${nets[n].id} "${nets[n].name}")`;
+  }
+
+  addSpool(`${refDes}.C`, { p: { x: p[0], y: p[1] }, r: 0.005 });
+  addSpool(`${refDes}.T`, { p: { x: p[0], y: p[1] }, r: copperRadius, t: true });
+
+  var h = new hole(p, holeRadius, copperRadius, net);
+  this.models = [ h ];
+  this.kicadData = h.kicadData;
+}
+
 function hoopHole(refDes, p, n) {
   var holeRadius = 2 / 2;
 
@@ -333,6 +350,7 @@ function via(refDes, p, n) {
 }
 
 function addSpool(name, spool) {
+  spool.rOriginal = spool.r;
   spools[name] = spool;
 }
 
@@ -897,6 +915,7 @@ kicad = {
     getRules: getRules,
     setRules: setRules,
     hoopHole: hoopHole,
+    pinHole: pinHole,
     via: via,
     terminal: terminal,
     mountHole: mountHole,

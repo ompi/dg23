@@ -368,7 +368,7 @@ function board() {
     models.push(res);
     kicadData += res.kicadData;
 
-    var res = new kicad.potRk09('R12', -9 * 2.54, 4.5 * 2.54, 90, false, [ 'GND', 'GND', 'GND', "GND", "GND" ]);
+    var res = new kicad.potRk09('R21', -9 * 2.54, 4.5 * 2.54, 90, false, [ 'OUT', 'OUT_P', 'OUT_P', "GND", "GND" ]);
     models.push(res);
     kicadData += res.kicadData;
 
@@ -450,10 +450,6 @@ function board() {
     kicadData += v.kicadData;
 
     // XXX
-    var v = new kicad.via("VX1", [26 * 2.54, 6 * 2.54], "GND");
-    models.push(v);
-    kicadData += v.kicadData;
-
     var v = new kicad.via("VX2", [27 * 2.54, 5 * 2.54], "GND");
     models.push(v);
     kicadData += v.kicadData;
@@ -468,11 +464,11 @@ function board() {
     kicadData += v.kicadData;
 
     // VCC
-    var v = new kicad.via("VVCC1", [13.5 * 2.54, 5.5 * 2.54], "VCC");
+    var v = new kicad.pinHole("VVCC1", [13.5 * 2.54, 5.5 * 2.54], "VCC");
     models.push(v);
     kicadData += v.kicadData;
 
-    var v = new kicad.via("VVCC2", [20.5 * 2.54, 5.5 * 2.54], "VCC");
+    var v = new kicad.pinHole("VVCC2", [19 * 2.54, 5.5 * 2.54], "VCC");
     models.push(v);
     kicadData += v.kicadData;
 
@@ -580,12 +576,9 @@ function board() {
     ], "F.Cu");
 
     // BUTTON
-    t = { traceWidth: rules.minTraceWidth, minTraceSpacing: rules.minTraceSpacing };
-    spool.windTrace(t, kicad.getSpool('R3.P2.C'), 0);
-    spool.windTrace(t, kicad.getSpool('U4.P3.T'), 1);
-    spool.windTrace(t, kicad.getSpool('U4.P4.C'), 0);
-    paths = paths.concat(t.paths);
-    kicadData += kicad.trace2kicadTrace(t, "F.Cu");
+    bus([
+      [ [ 'U4.P4.C', 0], ['U4.P3.T', 0], ['R3.P2.C', 0], ['R21.P3.T', 0], ['R11.P1.T', 0] ]
+    ], "F.Cu");
 
     // CLK_DIV16
     bus([
@@ -729,9 +722,11 @@ function board() {
     });
 
     kicad.getSpool('R221.P2.T').r = 1.6/2;
-
+    kicad.getSpool('R9.P1.T').r = 1.6/2 + 0.15 * 5;
+    kicad.getSpool('R9.P1.T').u = true;
+    kicad.getSpool('R9.P1.T').t = false;
     bus([
-      [ ['R222.P1.C', 0], ['R222.P2.T', 1], ['H15_5.T', 1], ['R9.P2.T', 0], ['R9.P3.C', 0] ], // ROW4
+      [ ['R222.P1.C', 0], ['R222.P2.T', 1], ['H15_5.T', 1], ['R9.P1.T', 0], ['R9.P2.T', 0], ['R9.P3.C', 0] ], // ROW4
       [ ['R221.P1.C', 0], ['R221.P2.T', 0], ['H15_5.T', 1], ['R9.P1.T', 0], ['R9.P2.C', 0] ], // ROW4
     ], "F.Cu");
 
@@ -750,7 +745,9 @@ function board() {
     ], "F.Cu");
 
     bus([
-      [ ['U201.P10.C', 0], ['R17.P2.T', 1], ['R18.P2.T', 1], ['VX1.C', 0] ], // OUT
+      [ ['U201.P13.C', 0], ['VVCC2.T', 1], ['R21.P2.C', 0] ],
+      [ ['U201.P10.C', 0], ['R17.P2.T', 1], ['R18.P2.T', 1], ['R18.P1.T', 1], ['U201.P8.T', 1],
+        ['VVCC2.T', 1], ['U3.P3.T', 0], ['U3.P1.T', 0], ['R21.P1.C', 0] ], // OUT
     ], "F.Cu");
 
     speaker([
@@ -871,11 +868,9 @@ function board() {
     kicadData += kicad.trace2kicadTrace(t, "B.Cu");
 
     // BUTTON
-    t = { traceWidth: rules.minTraceWidth, minTraceSpacing: rules.minTraceSpacing };
-    spool.windTrace(t, kicad.getSpool("U4.P4.C"), 0);
-    spool.windTrace(t, kicad.getSpool("U4.P9.C"), 0);
-    paths = paths.concat(t.paths);
-    kicadData += kicad.trace2kicadTrace(t, "B.Cu");
+    bus([
+      [ [ 'U4.P4.C', 0 ], [ 'U4.P9.C', 0] ]
+    ], "B.Cu");
 
     // #SRQ
     t = { traceWidth: rules.minTraceWidth, minTraceSpacing: rules.minTraceSpacing };
@@ -950,7 +945,11 @@ function board() {
     kicad.getSpool('R19.P2.T').r = 1.6/2;
     bus([
       [ ['U201.P1.C', 0], ['U201.P14.T', 1], ['R19.P1.T', 1], ['R15.P1.C', 0] ], // OSC5_O
-      [ ['U201.P2.C', 0], ['U201.P13.T', 1], ['R19.P2.T', 1], ['R16.P1.C', 0] ], // OSC4_O
+    ], "B.Cu");
+    kicad.getSpool('VVCC2.T').r = 1.6/2;
+    kicad.getSpool('U201.P14.T').r = 1.6/2;
+    bus([
+      [ ['U201.P2.C', 0], ['VVCC2.T', 1], ['U201.P14.T', 0], ['R19.P2.T', 1], ['R16.P1.C', 0] ], // OSC4_O
     ], "B.Cu");
 
     bus([
