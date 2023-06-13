@@ -355,7 +355,7 @@ function board() {
 
     // OSCx POTS
     for (var i = 0; i < 5; i++) {
-      const px = 123;
+      const px = 121;
       const py = 20;
       const vo = -15;
       const oscs = [ 'OSC0', 'OSC3', 'OSC2', 'OSC0', 'OSC0' ];
@@ -435,7 +435,7 @@ function board() {
     kicadData += v.kicadData;
 
     // CLK
-    var v = new kicad.via("VCLK", [-3 * 2.54, 4 * 2.54], "CLK");
+    var v = new kicad.via("VCLK", [-3 * 2.54, 3 * 2.54], "CLK");
     models.push(v);
     kicadData += v.kicadData;
 
@@ -477,11 +477,11 @@ function board() {
     kicadData += v.kicadData;
 
     // COIL
-    var v = new kicad.via("VCOIL1", [76, 16], "GND");
+    var v = new kicad.via("VCOIL1", [75, 16], "GND");
     models.push(v);
     kicadData += v.kicadData;
 
-    var v = new kicad.via("VCOIL2", [106, 16], "GND");
+    var v = new kicad.via("VCOIL2", [105, 16], "GND");
     models.push(v);
     kicadData += v.kicadData;
   }
@@ -561,8 +561,8 @@ function board() {
     // TRIGGER_STOP
     kicad.getSpool('U5.P10.T').r = 1.6 / 2;
     bus([ [ ['U5.P11.C', 0], ['U5.P10.T', 0], ['R1.P2.C', 0],
-            ['R143.P2.T', 1], ['R16.P2.T', 1], ['R5.P1.T', 1], ['R6.P1.T', 1],
-            ['R9.P3.T', 1], ['HTRIGGER_STOP.C', 0]
+            ['R143.P2.T', 1], ['R16.P2.T', 1], ['R5.P1.T', 1],
+            ['HTRIGGER_STOP.C', 0]
     ] ], "F.Cu");
 
     // RESET
@@ -594,7 +594,7 @@ function board() {
 
     // CLK
     bus([
-      [ ['VCLK.C', 0], ['U3.P2.T', 0], ['U6.P7.T', 0], ['U101.P1.C', 0] ], 
+      [ ['VCLK.C', 0], /*['U3.P2.T', 0],*/ ['U6.P7.T', 0], ['U101.P1.C', 0] ], 
     ], "F.Cu");
 
     // OUT
@@ -969,9 +969,11 @@ function board() {
       [ ['U101.P3.C', 0], ['VVCC1.C', 0] ],
       [ ['U201.P3.C', 0], ['VVCC2.C', 0] ],
     ], "B.Cu");
+    kicad.getSpool('U201.P10.T').r = 1.6/2;
     bus([
       [ ['VVCC1.C', 0], ['U101.P12.T', 0], ['R14.P2.T', 0], ['R2.P1.C', 0] ],
       [ ['R2.P1.C', 0], ['R1.P1.C', 0] ],
+      [ ['VVCC2.C', 0], ['U201.P10.T', 0], ['R17.P1.T', 1], ['R17.P2.C', 0] ],
     ], "B.Cu");
     power([
       [ ['R10.P10.C', 0], ['R213.P1.T', 1], ['C201.P2.T', 1], ['C201.P1.C', 0] ],
@@ -1160,8 +1162,8 @@ function board() {
 
   nets();
 
-//matrixLower();
-  matrixUpper();
+matrixLower();
+//  matrixUpper();
 
   components();
   dothecoil();
@@ -1181,22 +1183,43 @@ function board() {
     var t = new makerjs.models.Text(font, 'Balatòn', 5);
     t = makerjs.model.mirror(t, 1, 0);
 
-    var t2 = new makerjs.models.Text(font, 'DG23', 5);
-    t2 = makerjs.model.move(t2, [2, 0]);
-
     w = 20;
     g = makerjs.model.move(new makerjs.models.Rectangle(w, 5.6), [1 - w, -1]);
-
     z = makerjs.model.combineSubtraction(g, t);
-    z = makerjs.model.combineUnion(z, t2);
 
     return z;
   }
 
-  z = makerjs.model.move(new logo(), [95, 3]);
+  z = makerjs.model.move(new logo(), [105, 0]);
   models.push(z);
   kicadData += kicad.model2kicadPolygon(z, "F.Cu", 0.050);
   kicadData += kicad.model2kicadPolygon(z, "F.Mask", 0.250);
+
+  function dg23() {
+    var logoData = [ [ 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, ],
+                     [ 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, ],
+                     [ 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1, ],
+                     [ 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, ],
+                     [ 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, ] ];
+
+    const h = logoData.length;
+    const w = logoData[0].length;
+
+    for (var j = 0; j < h; j++) {
+      for (var i = 0; i < w; i++) {
+        if (logoData[j][logoData[j].length - i - 1]) {
+          const d = 6.5;
+          const step = 8;
+          const pos = [matrixOrigin.x + (w - i) * step - d / 2 - step / 2, matrixOrigin.y + (h - j) * step - d / 2 - step / 2];
+          const c = makerjs.model.move(new makerjs.models.Oval(d, d), pos);
+          models.push(c);
+          kicadData += kicad.model2kicadPolygon(c, "F.SilkS", 0.050);
+        }
+      }
+    }
+  }
+
+  dg23();
 
   var bo = new boardOutline();
   models.push(bo);
